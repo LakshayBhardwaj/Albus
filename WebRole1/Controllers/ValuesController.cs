@@ -17,6 +17,8 @@ using System.Windows.Media;
 using System.Threading;
 using System.Windows.Threading;
 using System.Windows.Media.Imaging;
+using System.Diagnostics;
+using System.Text;
 
 namespace WebRole1.Controllers
 {
@@ -42,13 +44,13 @@ namespace WebRole1.Controllers
         }
 
         // GET api/values/5
-        public async void Get(int id)
+        public async Task<string> Get(int id)
         {
             bool groupExists = false;
 
 
-            string subscriptionKey = "";
-            string endpoint = "";
+            string subscriptionKey = "c01618ecaed94cba98b8c8b8e3a594b3";
+            string endpoint = "https://lakshay.cognitiveservices.azure.com/face/v1.0";
 
             var faceServiceClient = new FaceServiceClient(subscriptionKey, endpoint);
             System.Diagnostics.Debug.WriteLine("---------Hiiiii--------");
@@ -66,7 +68,7 @@ namespace WebRole1.Controllers
                 if (ex.ErrorCode != "LargePersonGroupNotFound")
                 {
                     System.Diagnostics.Debug.WriteLine("Response: {0}. {1}", ex.ErrorCode, ex.ErrorMessage);
-                    return;
+                    return "";
                 }
                 else
                 {
@@ -96,7 +98,7 @@ namespace WebRole1.Controllers
             catch (FaceAPIException ex)
             {
                 System.Diagnostics.Debug.WriteLine("Response: {0}. {1}", ex.ErrorCode, ex.ErrorMessage);
-                return;
+                return "";
             }
 
 
@@ -210,10 +212,119 @@ namespace WebRole1.Controllers
 
                 Persons.Add(p);
             }
+
+            if (invalidImageCount > 0)
+            {
+                System.Diagnostics.Debug.WriteLine("Warning: more or less than one face is detected in {0} images, can not add to face list.", invalidImageCount);
+            }
+            System.Diagnostics.Debug.WriteLine("Response: Success. Total {0} faces are detected.", Persons.Sum(p => p.Faces.Count));
+
+            try
+            {
+                // Start train large person group
+                System.Diagnostics.Debug.WriteLine("Request: Training group \"{0}\"", this.GroupId);
+                await faceServiceClient.TrainLargePersonGroupAsync(this.GroupId);
+
+                // Wait until train completed
+                while (true)
+                {
+                    await Task.Delay(1000);
+                    var status = await faceServiceClient.GetLargePersonGroupTrainingStatusAsync(this.GroupId);
+                    System.Diagnostics.Debug.WriteLine("Response: {0}. Group \"{1}\" training process is {2}", "Success", this.GroupId, status.Status);
+                    if (status.Status != Microsoft.ProjectOxford.Face.Contract.Status.Running)
+                    {
+                        break;
+                    }
+                }
+                //IdentifyButton.IsEnabled = true;
+            }
+            catch (FaceAPIException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Response: {0}. {1}", ex.ErrorCode, ex.ErrorMessage);
+            }
+        
+            GC.Collect();
+
+            Identify_Click();
+            return "";
         }
 
-                // POST api/values
-                public void Post([FromBody]string value)
+        private async void Identify_Click()
+        {
+           
+
+            if (true)
+            {
+                // User picked one image
+                // Clear previous detection and identification results
+                TargetFaces.Clear();
+                var pickedImagePath = "D:/Development/Cognitive-Face-Windows-master/Cognitive-Face-Windows-master/Data/identification1.jpg";
+                var renderingImage = UIHelper.LoadImageAppliedOrientation(pickedImagePath);
+                var imageInfo = UIHelper.GetImageInfoForRendering(renderingImage);
+                SelectedFile = renderingImage;
+
+                var sw = Stopwatch.StartNew();
+
+
+                string subscriptionKey = "c01618ecaed94cba98b8c8b8e3a594b3";
+                string subscriptionEndpoint = "https://lakshay.cognitiveservices.azure.com/face/v1.0";
+                var faceServiceClient = new FaceServiceClient(subscriptionKey, subscriptionEndpoint);
+
+                // Call detection REST API
+                using (var fStream = File.OpenRead(pickedImagePath))
+                {
+                    try
+                    {
+                        var faces = await faceServiceClient.DetectAsync(fStream);
+
+                        // Convert detection result into UI binding object for rendering
+                        foreach (var face in UIHelper.CalculateFaceRectangleForRendering(faces, MaxImageSize, imageInfo))
+                        {
+                            TargetFaces.Add(face);
+                        }
+
+                        System.Diagnostics.Debug.WriteLine("Request: Identifying {0} face(s) in group \"{1}\"", faces.Length, this.GroupId);
+
+                        // Identify each face
+                        // Call identify REST API, the result contains identified person information
+                        var identifyResult = await faceServiceClient.IdentifyAsync(faces.Select(ff => ff.FaceId).ToArray(), largePersonGroupId: this.GroupId);
+                        for (int idx = 0; idx < faces.Length; idx++)
+                        {
+                            // Update identification result for rendering
+                            var face = TargetFaces[idx];
+                            var res = identifyResult[idx];
+                            if (res.Candidates.Length > 0 && Persons.Any(p => p.PersonId == res.Candidates[0].PersonId.ToString()))
+                            {
+                                face.PersonName = Persons.Where(p => p.PersonId == res.Candidates[0].PersonId.ToString()).First().PersonName;
+                            }
+                            else
+                            {
+                                face.PersonName = "Unknown";
+                            }
+                        }
+
+                        var outString = new StringBuilder();
+                        foreach (var face in TargetFaces)
+                        {
+                            outString.AppendFormat("Face {0} is identified as {1}. ", face.FaceId, face.PersonName);
+                        }
+
+                        System.Diagnostics.Debug.WriteLine("Response: Success. {0}", outString);
+                    }
+                    catch (FaceAPIException ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Response: {0}. {1}", ex.ErrorCode, ex.ErrorMessage);
+                    }
+                }
+            }
+            GC.Collect();
+            
+        }
+
+
+
+        // POST api/values
+        public void Post([FromBody]string value)
                 {
                 }
 
@@ -276,6 +387,14 @@ namespace WebRole1.Controllers
             }
         }
 
+
+        public int MaxImageSize
+        {
+            get
+            {
+                return 300;
+            }
+        }
 
 
 
