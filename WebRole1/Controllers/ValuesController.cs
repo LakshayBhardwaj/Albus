@@ -20,6 +20,10 @@ using System.Windows.Media.Imaging;
 using System.Diagnostics;
 using System.Text;
 
+using Microsoft.WindowsAzure;
+using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Blob;
+
 namespace WebRole1.Controllers
 {
     public class ValuesController : ApiController
@@ -37,9 +41,12 @@ namespace WebRole1.Controllers
 
         public event PropertyChangedEventHandler PropertyChanged;
 
+        int count = 0;
+
         // GET api/values
         public IEnumerable<string> Get()
         {
+
             return new string[] { "value1", "value2" };
         }
 
@@ -48,7 +55,7 @@ namespace WebRole1.Controllers
         {
             bool groupExists = false;
 
-
+            string returnStatus = "Success";
             string subscriptionKey = "c01618ecaed94cba98b8c8b8e3a594b3";
             string endpoint = "https://lakshay.cognitiveservices.azure.com/face/v1.0";
 
@@ -60,6 +67,7 @@ namespace WebRole1.Controllers
                 System.Diagnostics.Debug.WriteLine("Request: Group {0} will be used to build a person database. Checking whether the group exists.", this.GroupId);
 
                 await faceServiceClient.GetLargePersonGroupAsync(this.GroupId);
+                count++;
                 groupExists = true;
                 System.Diagnostics.Debug.WriteLine("Response: Group {0} exists.", this.GroupId);
             }
@@ -79,6 +87,7 @@ namespace WebRole1.Controllers
             if (groupExists)
             {
                 await faceServiceClient.DeleteLargePersonGroupAsync(this.GroupId);
+                count++;
                 this.GroupId = Guid.NewGuid().ToString();
             }
 
@@ -93,6 +102,7 @@ namespace WebRole1.Controllers
             try
             {
                 await faceServiceClient.CreateLargePersonGroupAsync(this.GroupId, this.GroupId);
+                count++;
                 System.Diagnostics.Debug.WriteLine("Response: Success. Group \"{0}\" created", this.GroupId);
             }
             catch (FaceAPIException ex)
@@ -224,12 +234,13 @@ namespace WebRole1.Controllers
                 // Start train large person group
                 System.Diagnostics.Debug.WriteLine("Request: Training group \"{0}\"", this.GroupId);
                 await faceServiceClient.TrainLargePersonGroupAsync(this.GroupId);
-
+                count++;
                 // Wait until train completed
                 while (true)
                 {
                     await Task.Delay(1000);
                     var status = await faceServiceClient.GetLargePersonGroupTrainingStatusAsync(this.GroupId);
+                    count++;
                     System.Diagnostics.Debug.WriteLine("Response: {0}. Group \"{1}\" training process is {2}", "Success", this.GroupId, status.Status);
                     if (status.Status != Microsoft.ProjectOxford.Face.Contract.Status.Running)
                     {
@@ -245,11 +256,34 @@ namespace WebRole1.Controllers
         
             GC.Collect();
 
-            Identify_Click();
-            return "";
+            CloudStorageAccount storageAccount = CreateStorageAccountFromConnectionString("DefaultEndpointsProtocol=https;AccountName=albus;AccountKey=V6tfipu99EwHGMhaxSiYNAE3m1FE43jSKHtNpbr3Z76Pf7nsbRFfJOsleI2Po3UWObTX/7c9R6h5JYS1EfqlGQ==;EndpointSuffix=core.windows.net");
+
+            // Create a blob client for interacting with the blob service.
+            CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
+
+            CloudBlobContainer container = blobClient.GetContainerReference("samplecontainer");
+            foreach (IListBlobItem blob in container.ListBlobs())
+            {
+                // Blob type will be CloudBlockBlob, CloudPageBlob or CloudBlobDirectory
+                // Use blob.GetType() and cast to appropriate type to gain access to properties specific to each type
+                try
+                {
+                    await Identify_Click(blob);
+                    
+                }
+                catch (Exception e)
+                {
+                    returnStatus =  e.ToString();
+                    break;
+                    
+                }
+            }
+
+            //Identify_Click();
+           return returnStatus;
         }
 
-        private async void Identify_Click()
+        private async Task Identify_Click(IListBlobItem blob)
         {
            
 
@@ -258,7 +292,11 @@ namespace WebRole1.Controllers
                 // User picked one image
                 // Clear previous detection and identification results
                 TargetFaces.Clear();
-                var pickedImagePath = "D:/Development/Cognitive-Face-Windows-master/Cognitive-Face-Windows-master/Data/identification1.jpg";
+                using (var client = new WebClient())
+                {
+                    client.DownloadFile(blob.Uri.AbsoluteUri, @"C:\Users\Thinksysuser\Pictures\Saved Pictures\"+blob.Uri.Segments.Last());
+                }
+                var pickedImagePath = @"C:\Users\Thinksysuser\Pictures\Saved Pictures\" + blob.Uri.Segments.Last();
                 var renderingImage = UIHelper.LoadImageAppliedOrientation(pickedImagePath);
                 var imageInfo = UIHelper.GetImageInfoForRendering(renderingImage);
                 SelectedFile = renderingImage;
@@ -276,7 +314,8 @@ namespace WebRole1.Controllers
                     try
                     {
                         var faces = await faceServiceClient.DetectAsync(fStream);
-
+                        count++;
+                        System.Diagnostics.Debug.WriteLine("-----after detect----"+count);
                         // Convert detection result into UI binding object for rendering
                         foreach (var face in UIHelper.CalculateFaceRectangleForRendering(faces, MaxImageSize, imageInfo))
                         {
@@ -285,9 +324,12 @@ namespace WebRole1.Controllers
 
                         System.Diagnostics.Debug.WriteLine("Request: Identifying {0} face(s) in group \"{1}\"", faces.Length, this.GroupId);
 
+                        
                         // Identify each face
                         // Call identify REST API, the result contains identified person information
                         var identifyResult = await faceServiceClient.IdentifyAsync(faces.Select(ff => ff.FaceId).ToArray(), largePersonGroupId: this.GroupId);
+                        count++;
+                        System.Diagnostics.Debug.WriteLine("-----after identify----" + count);
                         for (int idx = 0; idx < faces.Length; idx++)
                         {
                             // Update identification result for rendering
@@ -337,6 +379,32 @@ namespace WebRole1.Controllers
                 public void Delete(int id)
                 {
                 }
+
+
+        private static CloudStorageAccount CreateStorageAccountFromConnectionString(string storageConnectionString)
+        {
+            CloudStorageAccount storageAccount;
+            try
+            {
+                storageAccount = CloudStorageAccount.Parse(storageConnectionString);
+            }
+            catch (FormatException)
+            {
+                System.Diagnostics.Debug.WriteLine("Invalid storage account information provided. Please confirm the AccountName and AccountKey are valid in the app.config file - then restart the sample.");
+                Console.ReadLine();
+                throw;
+            }
+            catch (ArgumentException)
+            {
+                System.Diagnostics.Debug.WriteLine("Invalid storage account information provided. Please confirm the AccountName and AccountKey are valid in the app.config file - then restart the sample.");
+                Console.ReadLine();
+                throw;
+            }
+
+            return storageAccount;
+        }
+
+
 
         public string GroupId
         {
