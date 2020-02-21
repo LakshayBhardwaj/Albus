@@ -56,8 +56,8 @@ namespace WebRole1.Controllers
             bool groupExists = false;
 
             string returnStatus = "Success";
-            string subscriptionKey = "c01618ecaed94cba98b8c8b8e3a594b3";
-            string endpoint = "https://lakshay.cognitiveservices.azure.com/face/v1.0";
+            string subscriptionKey = "";
+            string endpoint = "";
 
             var faceServiceClient = new FaceServiceClient(subscriptionKey, endpoint);
             System.Diagnostics.Debug.WriteLine("---------Hiiiii--------");
@@ -120,7 +120,7 @@ namespace WebRole1.Controllers
             // Enumerate top level directories, each directory contains one person's images
             int invalidImageCount = 0;
 
-            foreach (var dir in System.IO.Directory.EnumerateDirectories("D:/Development/Cognitive-Face-Windows-master/Cognitive-Face-Windows-master/Data/PersonGroup"))
+            foreach (var dir in System.IO.Directory.EnumerateDirectories(""))
             {
                 var tasks = new List<Task>();
                 var tag = System.IO.Path.GetFileName(dir);
@@ -189,31 +189,7 @@ namespace WebRole1.Controllers
                                 return;
                             }
                            
-                            //    Dispatcher.Invoke(
-                            //        new Action<ObservableCollection<Face>, string, ClientContract.AddPersistedFaceResult>(UIHelper.UpdateFace),
-                            //        faces,
-                            //        detectionResult.Item1,
-                            //        detectionResult.Item2);
-                            }));
-                            //    if (processCount >= SuggestionCount && !forceContinue)
-                            //    {
-                            //        var continueProcess = System.Windows.Forms.MessageBox.Show("The images loaded have reached the recommended count, may take long time if proceed. Would you like to continue to load images?", "Warning", System.Windows.Forms.MessageBoxButtons.YesNo);
-                            //        if (continueProcess == System.Windows.Forms.DialogResult.Yes)
-                            //        {
-                            //            forceContinue = true;
-                            //        }
-                            //        else
-                            //        {
-                            //            break;
-                            //        }
-                            //    }
-
-                            //    if (tasks.Count >= _maxConcurrentProcesses || imageList.IsEmpty)
-                            //    {
-                            //        await Task.WhenAll(tasks);
-                            //        tasks.Clear();
-                            //    }
-                            //}
+                           
 
                             
 
@@ -256,7 +232,7 @@ namespace WebRole1.Controllers
         
             GC.Collect();
 
-            CloudStorageAccount storageAccount = CreateStorageAccountFromConnectionString("DefaultEndpointsProtocol=https;AccountName=albus;AccountKey=V6tfipu99EwHGMhaxSiYNAE3m1FE43jSKHtNpbr3Z76Pf7nsbRFfJOsleI2Po3UWObTX/7c9R6h5JYS1EfqlGQ==;EndpointSuffix=core.windows.net");
+            CloudStorageAccount storageAccount = CreateStorageAccountFromConnectionString("");
 
             // Create a blob client for interacting with the blob service.
             CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
@@ -304,8 +280,8 @@ namespace WebRole1.Controllers
                 var sw = Stopwatch.StartNew();
 
 
-                string subscriptionKey = "c01618ecaed94cba98b8c8b8e3a594b3";
-                string subscriptionEndpoint = "https://lakshay.cognitiveservices.azure.com/face/v1.0";
+                string subscriptionKey = "";
+                string subscriptionEndpoint = "";
                 var faceServiceClient = new FaceServiceClient(subscriptionKey, subscriptionEndpoint);
 
                 // Call detection REST API
