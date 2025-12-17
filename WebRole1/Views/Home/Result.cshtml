@@ -1,0 +1,59 @@
+@model IEnumerable<WebRole1.Controllers.Face>
+
+@{
+    ViewBag.Title = "Analysis Result";
+    string imageData = ViewBag.ImageData as string;
+}
+
+<h2>Analysis Result</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <div style="position: relative; display: inline-block;">
+            <img src="@imageData" style="max-width: 100%;" />
+
+            @if (Model != null)
+            {
+                foreach (var face in Model)
+                {
+                    <div style="position: absolute;
+                                border: 2px solid red;
+                                left: @(face.Left)px;
+                                top: @(face.Top)px;
+                                width: @(face.Width)px;
+                                height: @(face.Height)px;">
+                        <span style="background-color: red; color: white; font-size: 12px; position: absolute; top: -20px;">
+                            @face.Gender, @face.Age
+                        </span>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+    <div class="col-md-4">
+        <h3>Detected Faces</h3>
+        @if (Model != null && Model.Any())
+        {
+            <ul class="list-group">
+                @foreach (var face in Model)
+                {
+                    <li class="list-group-item">
+                        <strong>Face ID:</strong> @face.FaceId <br />
+                        <strong>Age:</strong> @face.Age <br />
+                        <strong>Gender:</strong> @face.Gender <br />
+                        <strong>Emotion:</strong> @face.Emotion <br />
+                        <strong>Confidence:</strong> @face.Confidence
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p>No faces detected.</p>
+        }
+
+        <p>
+            @Html.ActionLink("Analyze Another", "Index", null, new { @class = "btn btn-default" })
+        </p>
+    </div>
+</div>
