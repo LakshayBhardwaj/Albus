@@ -28,8 +28,12 @@ namespace WebRole1
             bootstrapBundle.CdnFallbackExpression = "window.jQuery.fn.modal";
             bundles.Add(bootstrapBundle);
 
-            bundles.Add(new StyleBundle("~/Content/css").Include(
-                      "~/Content/bootstrap.css",
+            // Split bootstrap css to use CDN, and site css to remain local
+            var bootstrapCssCdnPath = "https://ajax.aspnetcdn.com/ajax/bootstrap/3.4.1/css/bootstrap.min.css";
+            bundles.Add(new StyleBundle("~/Content/bootstrap", bootstrapCssCdnPath).Include(
+                      "~/Content/bootstrap.css"));
+
+            bundles.Add(new StyleBundle("~/Content/site").Include(
                       "~/Content/site.css"));
         }
     }
