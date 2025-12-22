@@ -8,6 +8,11 @@ namespace WebRole1
         // For more information on bundling, visit https://go.microsoft.com/fwlink/?LinkId=301862
         public static void RegisterBundles(BundleCollection bundles)
         {
+#if !DEBUG
+            // Force optimization to be on in Release mode, regardless of Web.config debug setting
+            BundleTable.EnableOptimizations = true;
+#endif
+
             // Enable CDN usage
             bundles.UseCdn = true;
 
