@@ -34,7 +34,8 @@ namespace WebRole1.Services
                     Height = rng.Next(100, 200),
                     PersonName = "Mock Person " + (i + 1),
                     Glasses = "NoGlasses",
-                    Smile = "Yes" // Add Smile property to Face if not exists or map to Emotion
+                    // Smile property does not exist in Face class, mapped to Emotion
+                    Emotion = "Happy"
                 });
             }
 
