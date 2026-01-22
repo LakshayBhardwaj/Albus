@@ -1,0 +1,3 @@
+## 2024-05-23 - Stream Handling & Async I/O
+**Learning:** `BinaryReader` closes the underlying stream upon disposal. In `HttpPostedFileBase` scenarios where the stream needs to be reused (e.g., read for display then passed to a service), wrapping it in `using (var reader = new BinaryReader(...))` causes the subsequent stream access to fail with `ObjectDisposedException`.
+**Action:** Avoid `BinaryReader` wrapper when the stream must be kept open. Prefer `Stream.ReadAsync` for non-blocking I/O and manual byte management. This also provides a performance benefit by freeing the thread pool during I/O.
