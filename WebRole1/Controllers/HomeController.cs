@@ -30,11 +30,17 @@ namespace WebRole1.Controllers
             if (imageFile != null && imageFile.ContentLength > 0)
             {
                 // Convert to base64 for display
-                byte[] fileData = null;
-                using (var binaryReader = new BinaryReader(imageFile.InputStream))
+                byte[] fileData = new byte[imageFile.ContentLength];
+                int totalRead = 0;
+                int bytesRead;
+
+                // Async read loop to avoid blocking threads
+                while (totalRead < fileData.Length &&
+                       (bytesRead = await imageFile.InputStream.ReadAsync(fileData, totalRead, fileData.Length - totalRead)) > 0)
                 {
-                    fileData = binaryReader.ReadBytes(imageFile.ContentLength);
+                    totalRead += bytesRead;
                 }
+
                 string base64Image = Convert.ToBase64String(fileData);
                 ViewBag.ImageData = String.Format("data:image/png;base64,{0}", base64Image);
 
